@@ -443,7 +443,7 @@ stateDiagram-v2
 **Verification:**
 - A user can initiate LinkedIn connection, return from Hosted Auth, and see a persisted account ready for sync.
 
-- [ ] **Unit 6: Historical Sync and Message Import Jobs**
+- [x] **Unit 6: Historical Sync and Message Import Jobs**
 
 **Goal:** Import historical LinkedIn chats/messages from Unipile, normalize people/chats/messages, and recompute affected relationships idempotently.
 
