@@ -493,7 +493,7 @@ stateDiagram-v2
 **Verification:**
 - Historical manual LinkedIn messages become visible in the person drawer and dashboard last activity is computed from real message rows.
 
-- [ ] **Unit 7: Webhook Ingestion and Async Processing**
+- [x] **Unit 7: Webhook Ingestion and Async Processing**
 
 **Goal:** Receive Unipile messaging, new-relation, and account-status webhooks safely, acknowledge quickly, persist raw events, and process domain changes asynchronously.
 
