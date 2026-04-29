@@ -54,6 +54,20 @@ describe("relationship stage engine", () => {
     ).toBe("dm_sent_no_reply");
   });
 
+  it("maps newer outbound after an older inbound to dm_sent_no_reply", () => {
+    expect(
+      computeRelationshipStage({
+        doNotContact: false,
+        relationshipStatus: "connected",
+        messageCount: 2,
+        lastInboundAt: new Date("2026-04-19T12:00:00Z"),
+        lastOutboundAt: new Date("2026-04-20T12:00:00Z"),
+        freshnessBucket: "warm",
+        now
+      })
+    ).toBe("dm_sent_no_reply");
+  });
+
   it("detects reply only when inbound is after outbound", () => {
     const inbound = new Date("2026-04-24T12:00:00Z");
     const outbound = new Date("2026-04-20T12:00:00Z");

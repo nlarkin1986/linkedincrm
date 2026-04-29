@@ -167,6 +167,12 @@ function createMemoryStore(): LinkedInSyncStore & {
       messages.set(input.unipileMessageId, message);
       return message;
     },
+    async findChatByUnipileId(input) {
+      return chats.get(input.unipileChatId) ?? null;
+    },
+    async findRelationship(input) {
+      return relationships.get(`${input.userId}:${input.personId}`) ?? null;
+    },
     async listRelationshipMessages(input) {
       return [...messages.values()]
         .filter((message) => message.userId === input.userId && message.personId === input.personId)

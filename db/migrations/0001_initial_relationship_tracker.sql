@@ -110,7 +110,7 @@ create table linkedin_chats (
   is_group boolean default false,
   unread boolean,
   last_message_at timestamptz,
-  last_message_direction text check (last_message_direction in ('inbound', 'outbound')),
+  last_message_direction text check (last_message_direction in ('inbound', 'outbound', 'unknown')),
   raw_json jsonb,
   created_at timestamptz default now(),
   updated_at timestamptz default now()

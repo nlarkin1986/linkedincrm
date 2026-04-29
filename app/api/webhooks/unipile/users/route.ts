@@ -1,34 +1,25 @@
 import { NextResponse } from "next/server";
-import { readOptionalServerEnv } from "@/server/config/env";
-import { verifyUnipileWebhook, WebhookAuthError } from "@/server/webhooks/unipile-auth";
-import { buildStoredWebhookEvent, parseNewRelationWebhook } from "@/server/webhooks/unipile-events";
+import { parseNewRelationWebhook } from "@/server/webhooks/unipile-events";
+import { acceptUnipileWebhook, readVerifiedUnipileWebhookPayload, unipileWebhookErrorResponse } from "@/server/webhooks/unipile-route";
+import { createRuntimeWebhookEventStore, createRuntimeWebhookQueue } from "@/server/webhooks/runtime";
 
 export async function POST(request: Request) {
   try {
-    verifyUnipileWebhook(request.headers, readOptionalServerEnv().UNIPILE_WEBHOOK_SECRET);
-    const payload = await readPayload(request);
+    const payload = await readVerifiedUnipileWebhookPayload(request);
     const relation = parseNewRelationWebhook(payload);
+    const event = await acceptUnipileWebhook({
+      eventType: "users",
+      queueEventName: "unipile/webhook.users",
+      payload,
+      store: createRuntimeWebhookEventStore(),
+      queue: createRuntimeWebhookQueue()
+    });
 
     return NextResponse.json(
-      { accepted: true, event: buildStoredWebhookEvent("users", payload), relation },
+      { accepted: true, event, relation },
       { status: 200 }
     );
   } catch (error) {
-    if (error instanceof WebhookAuthError) {
-      return NextResponse.json({ error: "Unauthorized webhook" }, { status: 401 });
-    }
-
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Invalid users webhook" },
-      { status: 400 }
-    );
+    return unipileWebhookErrorResponse(error, "Invalid users webhook");
   }
-}
-
-async function readPayload(request: Request): Promise<Record<string, unknown>> {
-  const payload = await request.json();
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new Error("Webhook payload must be an object");
-  }
-  return payload as Record<string, unknown>;
 }

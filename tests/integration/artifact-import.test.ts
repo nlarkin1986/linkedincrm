@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { prepareArtifactImport } from "@/server/import/artifact-import";
+import { persistArtifactImport } from "@/server/import/artifact-persistence";
 import { markRelationshipResponded, type RelationshipRecord } from "@/server/db/repositories/relationships";
 
 describe("artifact import", () => {
@@ -78,5 +79,32 @@ describe("artifact import", () => {
       relationshipStage: "replied"
     });
     expect(responded.lastInboundAt?.toISOString()).toBe("2026-04-29T12:00:00.000Z");
+  });
+
+  it("persists prepared rows against an owned LinkedIn account", async () => {
+    const persisted: unknown[] = [];
+    const rows = prepareArtifactImport([{ name: "Jane Buyer", freshnessBucket: "warm" }]);
+    const result = await persistArtifactImport({
+      user: { id: "user_1", email: "one@example.com" },
+      linkedinAccountId: "linkedin_account_1",
+      rows,
+      store: {
+        async findLinkedInAccountById() {
+          return {
+            id: "linkedin_account_1",
+            userId: "user_1",
+            unipileAccountId: "unipile_account_1",
+            status: "OK",
+            reconnectRequired: false
+          };
+        },
+        async upsertArtifactRelationship(input) {
+          persisted.push(input);
+        }
+      }
+    });
+
+    expect(result).toEqual({ importedCount: 1, linkedinAccountId: "linkedin_account_1" });
+    expect(persisted).toHaveLength(1);
   });
 });

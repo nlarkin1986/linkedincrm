@@ -13,6 +13,7 @@ describe("server env", () => {
       NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon",
       SUPABASE_SERVICE_ROLE_KEY: "service",
+      APP_BASE_URL: "https://app.example.com",
       UNIPILE_DSN: "api1.unipile.com:12345",
       UNIPILE_API_KEY: "unipile",
       UNIPILE_WEBHOOK_SECRET: "secret",

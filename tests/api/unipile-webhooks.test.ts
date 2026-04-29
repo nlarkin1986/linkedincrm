@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { POST as postMessagingWebhook } from "../../app/api/webhooks/unipile/messaging/route";
 import { POST as postUsersWebhook } from "../../app/api/webhooks/unipile/users/route";
 import { POST as postAccountStatusWebhook } from "../../app/api/webhooks/unipile/account-status/route";
+import { acceptUnipileWebhook } from "@/server/webhooks/unipile-route";
 
 describe("Unipile webhook routes", () => {
   beforeEach(() => {
@@ -64,6 +65,40 @@ describe("Unipile webhook routes", () => {
       status: "CREDENTIALS",
       reconnectRequired: true
     });
+  });
+
+  it("durably stores and enqueues accepted webhook events", async () => {
+    const stored: unknown[] = [];
+    const queued: unknown[] = [];
+    const event = await acceptUnipileWebhook({
+      eventType: "messaging",
+      queueEventName: "unipile/webhook.messaging",
+      payload: { account_id: "acct_1", id: "event_1" },
+      store: {
+        async insertWebhookEvent(input) {
+          stored.push(input);
+          return { id: "webhook_event_1" };
+        }
+      },
+      queue: {
+        async send(input) {
+          queued.push(input);
+        }
+      }
+    });
+
+    expect(event).toMatchObject({
+      id: "webhook_event_1",
+      eventType: "messaging",
+      unipileAccountId: "acct_1"
+    });
+    expect(stored).toHaveLength(1);
+    expect(queued).toEqual([
+      {
+        name: "unipile/webhook.messaging",
+        data: { webhookEventId: "webhook_event_1" }
+      }
+    ]);
   });
 });
 

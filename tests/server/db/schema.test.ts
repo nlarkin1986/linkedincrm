@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appUsers, freshnessBucket, relationshipStage } from "@/server/db/schema";
+import { appUsers, freshnessBucket, messageDirection, relationshipStage } from "@/server/db/schema";
 import { buildAppUserFromIdentity, normalizeEmail } from "@/server/db/repositories/app-users";
 
 describe("database schema", () => {
@@ -11,6 +11,10 @@ describe("database schema", () => {
     expect(relationshipStage.enumValues).toContain("dm_sent_no_reply");
     expect(relationshipStage.enumValues).toContain("do_not_contact");
     expect(freshnessBucket.enumValues).toEqual(["fresh", "warm", "cooling", "stale", "no_activity"]);
+  });
+
+  it("keeps chat/message direction values aligned with the migration", () => {
+    expect(messageDirection.enumValues).toEqual(["inbound", "outbound", "unknown"]);
   });
 
   it("normalizes app user email casing without changing auth identity", () => {

@@ -29,7 +29,9 @@ export function computeRelationshipStage(input: StageInput): RelationshipStage {
     return "replied";
   }
 
-  if (input.lastOutboundAt && !input.lastInboundAt) return "dm_sent_no_reply";
+  if (input.lastOutboundAt && (!input.lastInboundAt || input.lastOutboundAt > input.lastInboundAt)) {
+    return "dm_sent_no_reply";
+  }
   if (input.freshnessBucket === "stale") return "stale";
 
   return "needs_review";

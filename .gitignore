@@ -2,6 +2,7 @@
 node_modules/
 coverage/
 dist/
+.context/
 .env
 .env.*
 !.env.example

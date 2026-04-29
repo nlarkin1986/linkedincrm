@@ -1,14 +1,28 @@
 import { inngest } from "@/server/jobs/client";
+import { readServerEnv } from "@/server/config/env";
+import { createRuntimeDb } from "@/server/db/runtime";
+import { findLinkedInAccountById } from "@/server/db/repositories/linkedin-accounts";
+import { createRuntimeLinkedInSyncStore } from "@/server/jobs/runtime-sync-store";
+import { syncLinkedInAccountPartial } from "@/server/jobs/linkedin-sync";
+import { UnipileClient } from "@/server/unipile/client";
 
 export const syncLinkedInAccountPartialFunction = inngest.createFunction(
   { id: "sync-linkedin-account-partial" },
   { event: "linkedin/account.sync_partial" },
   async ({ event }) => {
-    return {
-      status: "accepted",
-      linkedinAccountId: event.data.linkedinAccountId,
-      after: event.data.after,
-      before: event.data.before
-    };
+    const env = readServerEnv();
+    const db = createRuntimeDb();
+    const accountId = String(event.data.linkedinAccountId ?? "");
+    const account = await findLinkedInAccountById(db, accountId);
+    if (!account) throw new Error("LinkedIn account not found");
+    if (typeof event.data.after !== "string") throw new Error("Partial sync requires after");
+
+    return syncLinkedInAccountPartial({
+      account,
+      unipile: new UnipileClient({ dsn: env.UNIPILE_DSN, apiKey: env.UNIPILE_API_KEY }),
+      store: createRuntimeLinkedInSyncStore(db),
+      after: new Date(event.data.after),
+      before: typeof event.data.before === "string" ? new Date(event.data.before) : undefined
+    });
   }
 );

@@ -78,6 +78,8 @@ export type LinkedInSyncStore = {
     source: "initial_sync" | "resync";
     rawJson: Record<string, unknown>;
   }): Promise<LinkedInMessageRecord>;
+  findChatByUnipileId(input: { unipileChatId: string }): Promise<LinkedInChatRecord | null>;
+  findRelationship(input: { userId: string; personId: string }): Promise<RelationshipRecord | null>;
   listRelationshipMessages(input: { userId: string; personId: string }): Promise<RelationshipMessage[]>;
   updateRelationshipState(input: {
     relationshipId: string;
@@ -239,7 +241,15 @@ export async function syncLinkedInAccountInitial(input: {
 export async function syncLinkedInAccountPartial(input: {
   account: LinkedInSyncAccount;
   unipile: SyncableUnipileClient;
-  store: LinkedInSyncStore;
+  store: Pick<
+    LinkedInSyncStore,
+    | "findChatByUnipileId"
+    | "findRelationship"
+    | "listRelationshipMessages"
+    | "markAccountSynced"
+    | "updateRelationshipState"
+    | "upsertMessage"
+  >;
   after: Date;
   before?: Date;
   now?: Date;
@@ -261,6 +271,46 @@ export async function syncLinkedInAccountPartial(input: {
       cursor
     })
   );
+  const affectedRelationships = new Map<string, RelationshipRecord>();
+
+  for (const rawMessage of messages) {
+    const unipileChatId = stringValue(rawMessage, "chat_id");
+    if (!unipileChatId) continue;
+
+    const chat = await input.store.findChatByUnipileId({ unipileChatId });
+    if (!chat) continue;
+
+    const normalized = normalizeUnipileMessage(rawMessage, input.account.accountUserProviderId);
+    const message = await input.store.upsertMessage({
+      userId: input.account.userId,
+      linkedinAccountId: input.account.id,
+      linkedinChatId: chat.id,
+      personId: chat.personId,
+      unipileMessageId: normalized.unipileMessageId,
+      senderAttendeeProviderId: normalized.senderAttendeeProviderId,
+      senderName: normalized.senderName,
+      direction: normalized.direction,
+      body: normalized.body,
+      sentAt: normalized.sentAt,
+      source: "resync",
+      rawJson: normalized.raw
+    });
+
+    if (message.personId) {
+      const relationship = await input.store.findRelationship({
+        userId: input.account.userId,
+        personId: message.personId
+      });
+      if (relationship) affectedRelationships.set(relationship.id, relationship);
+    }
+  }
+
+  await recomputeAffectedRelationships({
+    account: input.account,
+    store: input.store,
+    affectedRelationships: [...affectedRelationships.values()],
+    now: input.now
+  });
 
   await input.store.markAccountSynced({
     linkedinAccountId: input.account.id,
@@ -269,7 +319,9 @@ export async function syncLinkedInAccountPartial(input: {
   });
 
   return {
-    fetchedMessageCount: messages.length
+    fetchedMessageCount: messages.length,
+    importedMessageCount: messages.length,
+    affectedRelationshipCount: affectedRelationships.size
   };
 }
 
@@ -297,4 +349,9 @@ async function recomputeAffectedRelationships(input: {
       ...state
     });
   }
+}
+
+function stringValue(input: Record<string, unknown>, key: string): string | null {
+  const value = input[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }

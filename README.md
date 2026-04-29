@@ -20,6 +20,7 @@ Server code validates these variables before using external services:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `APP_BASE_URL`
 - `UNIPILE_DSN`
 - `UNIPILE_API_KEY`
 - `UNIPILE_WEBHOOK_SECRET`
@@ -34,6 +35,8 @@ Do not expose service-role, Unipile, Inngest signing, or AI keys to client compo
 ```bash
 npm run typecheck
 npm test
+npm run lint
+npm run build
 ```
 
 ## Current Scope
@@ -44,5 +47,7 @@ Implemented foundation covers:
 - Gladly UI primitives and dashboard placeholder
 - Drizzle schema and initial SQL migration
 - artifact import preparation
+- authenticated, account-scoped artifact import persistence
 - auth/session/ownership helpers
 - relationship freshness, stage, and recompute logic
+- Unipile account connection, sync, and webhook processing scaffolding

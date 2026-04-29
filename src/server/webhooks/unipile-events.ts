@@ -62,10 +62,13 @@ export function buildStoredWebhookEvent(
 
 export async function processUnipileMessagingWebhook(input: {
   payload: Record<string, unknown>;
+  webhookEventId?: string;
   store: MessagingWebhookProcessingStore;
   now?: Date;
 }) {
-  const webhookEvent = await input.store.upsertWebhookEvent(buildStoredWebhookEvent("messaging", input.payload));
+  const webhookEvent = input.webhookEventId
+    ? { id: input.webhookEventId }
+    : await input.store.upsertWebhookEvent(buildStoredWebhookEvent("messaging", input.payload));
   const unipileAccountId = stringValue(input.payload, "account_id") ?? stringValue(input.payload, "accountId");
   if (!unipileAccountId) throw new Error("Messaging webhook missing account_id");
 
