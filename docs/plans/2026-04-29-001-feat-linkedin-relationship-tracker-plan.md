@@ -392,7 +392,7 @@ stateDiagram-v2
 **Verification:**
 - Relationship state is reproducible from persisted messages/events and does not depend on dashboard state.
 
-- [ ] **Unit 5: Unipile Account Connection and Client Wrapper**
+- [x] **Unit 5: Unipile Account Connection and Client Wrapper**
 
 **Goal:** Add Unipile configuration, Hosted Auth link generation, connection callback handling, account health storage, and a typed API wrapper.
 
