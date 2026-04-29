@@ -1,7 +1,14 @@
-import { LogIn } from "lucide-react";
-import { Button } from "@/components/gladly/button";
+import { LoginForm } from "@/components/auth/login-form";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams?: Promise<{
+    next?: string;
+  }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+
   return (
     <main className="min-h-screen bg-gladly-page flex items-center justify-center px-4">
       <section className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-8">
@@ -15,10 +22,7 @@ export default function LoginPage() {
         <p className="mt-2 text-sm text-gray-500">
           Access the LinkedIn Connections Tracker with your Gladly account.
         </p>
-        <Button className="mt-6 w-full">
-          <LogIn className="h-4 w-4" />
-          Continue with email
-        </Button>
+        <LoginForm nextPath={params?.next ?? "/settings/linkedin"} />
       </section>
     </main>
   );

@@ -1,6 +1,5 @@
-import { RefreshCw } from "lucide-react";
-import { Button } from "@/components/gladly/button";
 import { Badge } from "@/components/gladly/badge";
+import { LinkedInConnectButton } from "@/components/linkedin/linkedin-connect-button";
 
 export default function LinkedInSettingsPage() {
   return (
@@ -17,10 +16,7 @@ export default function LinkedInSettingsPage() {
           </div>
           <Badge>Pending</Badge>
         </div>
-        <Button className="mt-4">
-          <RefreshCw className="h-4 w-4" />
-          Connect LinkedIn
-        </Button>
+        <LinkedInConnectButton />
       </section>
     </main>
   );

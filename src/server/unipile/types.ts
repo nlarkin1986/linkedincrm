@@ -4,14 +4,29 @@ export type UnipileConfig = {
   fetchImpl?: typeof fetch;
 };
 
+export type UnipilePrimitive = string | number | boolean;
+
+export type UnipileQueryParams = Record<string, UnipilePrimitive | null | undefined>;
+
+export type UnipileJsonBody = Record<string, unknown>;
+
+export type UnipileFormValue = string | number | boolean | Blob;
+
+export type UnipileFormBody = Record<string, UnipileFormValue | UnipileFormValue[] | null | undefined>;
+
 export type PaginatedUnipileResponse<T> = {
   items: T[];
   cursor?: string | null;
 };
 
+export type CursorPaginationParams = {
+  cursor?: string;
+  limit?: number;
+};
+
 export type HostedAuthLinkRequest = {
   type?: "create" | "reconnect";
-  providers?: readonly "LINKEDIN"[] | "*";
+  providers?: readonly UnipileProvider[] | "*";
   apiUrl: string;
   expiresOn: string;
   successRedirectUrl?: string;
@@ -26,21 +41,55 @@ export type HostedAuthLinkResponse = {
   url: string;
 };
 
-export type ListChatsParams = {
+export type UnipileProvider =
+  | "LINKEDIN"
+  | "WHATSAPP"
+  | "INSTAGRAM"
+  | "MESSENGER"
+  | "TELEGRAM"
+  | "GOOGLE"
+  | "OUTLOOK"
+  | "IMAP"
+  | "MAIL"
+  | "CALENDAR"
+  | "MOBILE";
+
+export type ListAccountsParams = CursorPaginationParams;
+
+export type AccountSyncParams = {
   accountId: string;
-  accountType?: "LINKEDIN";
+  partial?: boolean;
+  linkedinProduct?: "classic" | "sales_navigator" | "recruiter";
+  afterEpochMs?: number;
+  beforeEpochMs?: number;
+  chunkSize?: number;
+};
+
+export type ListChatsParams = CursorPaginationParams & {
+  accountId: string;
+  accountType?: UnipileProvider;
   after?: string;
   before?: string;
-  cursor?: string;
-  limit?: number;
   unread?: boolean;
 };
 
-export type ListMessagesParams = {
+export type ListMessagesParams = CursorPaginationParams & {
   accountId: string;
   after?: string;
   before?: string;
-  cursor?: string;
-  limit?: number;
   senderId?: string;
 };
+
+export type SendMessageRequest = UnipileFormBody & {
+  text?: string;
+  attachments?: Blob | Blob[];
+};
+
+export type StartChatRequest = SendMessageRequest & {
+  account_id: string;
+  attendees_ids?: string | string[];
+  title?: string;
+  subject?: string;
+};
+
+export type LinkedInProduct = "classic" | "sales_navigator" | "recruiter";

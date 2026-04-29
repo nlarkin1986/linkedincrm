@@ -30,6 +30,10 @@ Server code validates these variables before using external services:
 
 Do not expose service-role, Unipile, Inngest signing, or AI keys to client components.
 
+Unipile is configured with `UNIPILE_DSN=api17.unipile.com:14746`; keep the matching access token in `.env.local` or your deployment secret store as `UNIPILE_API_KEY`.
+
+Copy `.env.example` to `.env.local` for local development, then fill in the non-Unipile service values.
+
 ## Verification
 
 ```bash
@@ -50,4 +54,4 @@ Implemented foundation covers:
 - authenticated, account-scoped artifact import persistence
 - auth/session/ownership helpers
 - relationship freshness, stage, and recompute logic
-- Unipile account connection, sync, and webhook processing scaffolding
+- Unipile account connection, sync, webhook processing, and API client coverage
