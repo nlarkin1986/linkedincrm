@@ -1,0 +1,31 @@
+import { describe, expect, it } from "vitest";
+import { appUsers, freshnessBucket, relationshipStage } from "@/server/db/schema";
+import { buildAppUserFromIdentity, normalizeEmail } from "@/server/db/repositories/app-users";
+
+describe("database schema", () => {
+  it("includes the required auth identity field on app users", () => {
+    expect(appUsers.authUserId.name).toBe("auth_user_id");
+  });
+
+  it("defines relationship stage and freshness enums used by the dashboard", () => {
+    expect(relationshipStage.enumValues).toContain("dm_sent_no_reply");
+    expect(relationshipStage.enumValues).toContain("do_not_contact");
+    expect(freshnessBucket.enumValues).toEqual(["fresh", "warm", "cooling", "stale", "no_activity"]);
+  });
+
+  it("normalizes app user email casing without changing auth identity", () => {
+    expect(normalizeEmail(" Daniel@Example.COM ")).toBe("daniel@example.com");
+    expect(
+      buildAppUserFromIdentity({
+        id: "00000000-0000-0000-0000-000000000001",
+        email: "Daniel@Example.COM",
+        fullName: "Daniel Torres"
+      })
+    ).toMatchObject({
+      authUserId: "00000000-0000-0000-0000-000000000001",
+      email: "daniel@example.com",
+      fullName: "Daniel Torres",
+      role: "ae"
+    });
+  });
+});
