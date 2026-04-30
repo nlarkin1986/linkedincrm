@@ -31,6 +31,21 @@ describe("Unipile webhook routes", () => {
     });
   });
 
+  it("accepts Unipile's documented auth header", async () => {
+    const response = await postMessagingWebhook(
+      new Request("https://app.example.com/api/webhooks/unipile/messaging", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "Unipile-Auth": "webhook-secret"
+        },
+        body: JSON.stringify({ account_id: "acct_1", id: "event_1" })
+      })
+    );
+
+    expect(response.status).toBe(200);
+  });
+
   it("parses new relation webhooks", async () => {
     const response = await postUsersWebhook(
       request({

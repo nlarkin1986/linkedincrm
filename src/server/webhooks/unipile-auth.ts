@@ -11,6 +11,7 @@ export function verifyUnipileWebhook(headers: Headers, expectedSecret: string | 
   }
 
   const receivedSecret =
+    headers.get("unipile-auth") ??
     headers.get("x-unipile-webhook-secret") ??
     headers.get("x-webhook-secret") ??
     headers.get("authorization")?.replace(/^Bearer\s+/i, "");
