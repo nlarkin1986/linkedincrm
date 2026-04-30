@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prepareArtifactImport } from "@/server/import/artifact-import";
 import { persistArtifactImport } from "@/server/import/artifact-persistence";
 import { createRuntimeArtifactImportStore } from "@/server/import/runtime";
-import { readServerEnv } from "@/server/config/env";
+import { readServerEnv, readSupabasePublicKey } from "@/server/config/env";
 import { AuthenticationError } from "@/server/auth/session";
 import { requireRequestAuthIdentity } from "@/server/auth/request-session";
 
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const env = readServerEnv();
     const user = await requireRequestAuthIdentity(request, {
       supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      supabaseAnonKey: readSupabasePublicKey(env) ?? ""
     });
     const body = await request.json();
     const rows = Array.isArray(body?.rows) ? body.rows : null;

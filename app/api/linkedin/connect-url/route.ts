@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readServerEnv } from "@/server/config/env";
+import { readServerEnv, readSupabasePublicKey } from "@/server/config/env";
 import { AuthenticationError } from "@/server/auth/session";
 import { requireRequestAuthIdentity } from "@/server/auth/request-session";
 import { buildHostedAuthLinkInput } from "@/server/unipile/connection";
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const env = readServerEnv();
     const user = await requireRequestAuthIdentity(request, {
       supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      supabaseAnonKey: readSupabasePublicKey(env) ?? ""
     });
     const body = await request.json().catch(() => ({}));
     const appBaseUrl = getConfiguredAppBaseUrl(env.APP_BASE_URL, request.url);

@@ -1,7 +1,6 @@
 const serverOnlyKeys = [
   "DATABASE_URL",
   "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
   "APP_BASE_URL",
   "UNIPILE_DSN",
@@ -12,21 +11,38 @@ const serverOnlyKeys = [
   "AI_API_KEY"
 ] as const;
 
-export type ServerEnv = Record<(typeof serverOnlyKeys)[number], string>;
+const supabasePublicKeyNames = [
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+] as const;
+
+export type ServerEnv = Record<(typeof serverOnlyKeys)[number], string> &
+  Partial<Record<(typeof supabasePublicKeyNames)[number], string>>;
 type EnvSource = Record<string, string | undefined>;
 
 export function readServerEnv(source: EnvSource = process.env): ServerEnv {
-  const missing = serverOnlyKeys.filter((key) => !source[key]);
+  const missing = [
+    ...serverOnlyKeys.filter((key) => !source[key]),
+    ...(readSupabasePublicKey(source) ? [] : ["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY"])
+  ];
 
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
   }
 
-  return Object.fromEntries(serverOnlyKeys.map((key) => [key, source[key] as string])) as ServerEnv;
+  return Object.fromEntries(
+    [...serverOnlyKeys, ...supabasePublicKeyNames].flatMap((key) =>
+      source[key] ? [[key, source[key] as string]] : []
+    )
+  ) as ServerEnv;
 }
 
 export function readOptionalServerEnv(source: EnvSource = process.env): Partial<ServerEnv> {
   return Object.fromEntries(
-    serverOnlyKeys.flatMap((key) => (source[key] ? [[key, source[key] as string]] : []))
+    [...serverOnlyKeys, ...supabasePublicKeyNames].flatMap((key) => (source[key] ? [[key, source[key] as string]] : []))
   ) as Partial<ServerEnv>;
+}
+
+export function readSupabasePublicKey(source: Pick<ServerEnv, "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" | "NEXT_PUBLIC_SUPABASE_ANON_KEY"> | EnvSource): string | undefined {
+  return source.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? source.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 }
