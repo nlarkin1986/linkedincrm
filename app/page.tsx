@@ -1,4 +1,5 @@
 import { BarChart2, RefreshCw, Search, Settings, Upload } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/gladly/badge";
 import { Button } from "@/components/gladly/button";
 import { Input } from "@/components/gladly/input";
@@ -48,28 +49,31 @@ export default function Home() {
           <span className="text-xl font-semibold text-gray-900">Gladly</span>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm">
+          <Link
+            href="/settings/linkedin"
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-transparent bg-transparent px-3 py-1.5 text-sm font-medium text-gladly-green transition-colors hover:text-gladly-green-hover focus:outline-none focus:ring-2 focus:ring-gladly-green focus:ring-offset-2"
+          >
             <Settings className="h-4 w-4" />
             Settings
-          </Button>
+          </Link>
           <div className="h-8 w-8 rounded-full bg-gladly-green text-white text-xs font-medium flex items-center justify-center">
             DT
           </div>
         </div>
       </header>
 
-      <section className="px-10 py-8">
-        <div className="mb-6 flex items-start justify-between gap-4">
+      <section className="px-4 py-8 sm:px-6 lg:px-10">
+        <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">LinkedIn Connections Tracker</h1>
             <p className="text-sm text-gray-500 mt-1">141 connections · Data as of Apr 29, 2026</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="secondary">
+          <div className="flex w-full gap-2 sm:w-auto">
+            <Button className="flex-1 sm:flex-none" variant="secondary">
               <RefreshCw className="h-4 w-4" />
               Refresh Connections
             </Button>
-            <Button>
+            <Button className="flex-1 sm:flex-none">
               <BarChart2 className="h-4 w-4" />
               Refresh Activity
             </Button>
@@ -86,43 +90,45 @@ export default function Home() {
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-white">
-          <div className="px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex flex-col items-stretch justify-between gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-6">
             <Input
               aria-label="Search relationships"
-              className="w-80"
+              className="w-full sm:w-80"
               icon={<Search className="h-4 w-4" />}
               placeholder="Search by name, account, title, or location"
               rounded
             />
-            <Button variant="secondary">
+            <Button className="sm:flex-none" variant="secondary">
               <Upload className="h-4 w-4" />
               Export
             </Button>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Account</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead>Freshness</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.name}>
-                  <TableCell className="font-medium text-gray-900">{row.name}</TableCell>
-                  <TableCell>{row.account}</TableCell>
-                  <TableCell>{row.title}</TableCell>
-                  <TableCell>{row.stage}</TableCell>
-                  <TableCell>
-                    <Badge variant={row.bucket === "Fresh" ? "active" : "neutral"}>{row.bucket}</Badge>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[720px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Stage</TableHead>
+                  <TableHead>Freshness</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.name}>
+                    <TableCell className="font-medium text-gray-900">{row.name}</TableCell>
+                    <TableCell>{row.account}</TableCell>
+                    <TableCell>{row.title}</TableCell>
+                    <TableCell>{row.stage}</TableCell>
+                    <TableCell>
+                      <Badge variant={row.bucket === "Fresh" ? "active" : "neutral"}>{row.bucket}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </section>
     </main>
