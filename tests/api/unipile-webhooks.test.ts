@@ -82,6 +82,29 @@ describe("Unipile webhook routes", () => {
     });
   });
 
+  it("accepts documented nested account status payloads without forcing reconnect for sync success", async () => {
+    const response = await postAccountStatusWebhook(
+      request({
+        AccountStatus: {
+          account_id: "acct_1",
+          message: "SYNC_SUCCESS"
+        }
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.accountStatus).toMatchObject({
+      unipileAccountId: "acct_1",
+      status: "SYNC_SUCCESS",
+      reconnectRequired: false
+    });
+    expect(body.event).toMatchObject({
+      unipileAccountId: "acct_1",
+      processingStatus: "pending"
+    });
+  });
+
   it("durably stores and enqueues accepted webhook events", async () => {
     const stored: unknown[] = [];
     const queued: unknown[] = [];
@@ -110,10 +133,53 @@ describe("Unipile webhook routes", () => {
     expect(stored).toHaveLength(1);
     expect(queued).toEqual([
       {
+        id: "unipile.webhook.messaging:webhook_event_1",
         name: "unipile/webhook.messaging",
         data: { webhookEventId: "webhook_event_1" }
       }
     ]);
+  });
+
+  it("does not enqueue duplicate external webhook events twice", async () => {
+    const stored = new Map<string, { id: string }>();
+    const queued: unknown[] = [];
+    const store = {
+      async insertWebhookEvent(input: { eventType: string; externalEventId: string | null }) {
+        const key = `${input.eventType}:${input.externalEventId}`;
+        const existing = stored.get(key);
+        if (existing) return { ...existing, duplicate: true };
+        const event = { id: "webhook_event_1" };
+        stored.set(key, event);
+        return { ...event, duplicate: false };
+      }
+    };
+
+    await acceptUnipileWebhook({
+      eventType: "messaging",
+      queueEventName: "unipile/webhook.messaging",
+      payload: { account_id: "acct_1", id: "event_1" },
+      store,
+      queue: {
+        async send(input) {
+          queued.push(input);
+        }
+      }
+    });
+    const duplicate = await acceptUnipileWebhook({
+      eventType: "messaging",
+      queueEventName: "unipile/webhook.messaging",
+      payload: { account_id: "acct_1", id: "event_1" },
+      store,
+      queue: {
+        async send(input) {
+          queued.push(input);
+        }
+      }
+    });
+
+    expect(stored).toHaveLength(1);
+    expect(queued).toHaveLength(1);
+    expect(duplicate).toMatchObject({ id: "webhook_event_1", duplicate: true });
   });
 });
 

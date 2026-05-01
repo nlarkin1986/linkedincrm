@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { Badge } from "@/components/gladly/badge";
+import { LinkedInConnectedClaim } from "@/components/linkedin/linkedin-connected-claim";
 
 export default function LinkedInConnectedPage() {
   return (
@@ -10,7 +11,7 @@ export default function LinkedInConnectedPage() {
         </div>
         <Badge variant="active">Connected</Badge>
         <h1 className="mt-4 text-2xl font-bold text-gray-900">LinkedIn account connected</h1>
-        <p className="mt-2 text-sm text-gray-500">Historical sync will start once the account callback is processed.</p>
+        <LinkedInConnectedClaim />
       </section>
     </main>
   );

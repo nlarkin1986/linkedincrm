@@ -81,6 +81,7 @@ export const linkedinAccounts = pgTable("linkedin_accounts", {
   unipileAccountId: text("unipile_account_id").notNull().unique(),
   accountType: text("account_type").default("LINKEDIN"),
   linkedinProduct: linkedinProduct("linkedin_product"),
+  accountUserProviderId: text("account_user_provider_id"),
   status: text("status").default("pending"),
   statusMessage: text("status_message"),
   lastFullSyncAt: timestamp("last_full_sync_at", { withTimezone: true }),
@@ -225,17 +226,23 @@ export const nextActions = pgTable("next_actions", {
   ...timestamps
 });
 
-export const unipileWebhookEvents = pgTable("unipile_webhook_events", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  eventType: text("event_type"),
-  unipileAccountId: text("unipile_account_id"),
-  externalEventId: text("external_event_id"),
-  payload: jsonb("payload").notNull(),
-  processedAt: timestamp("processed_at", { withTimezone: true }),
-  processingStatus: text("processing_status").default("pending"),
-  error: text("error"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow()
-});
+export const unipileWebhookEvents = pgTable(
+  "unipile_webhook_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventType: text("event_type"),
+    unipileAccountId: text("unipile_account_id"),
+    externalEventId: text("external_event_id"),
+    payload: jsonb("payload").notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    processingStatus: text("processing_status").default("pending"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow()
+  },
+  (table) => ({
+    eventExternalIdUnique: unique().on(table.eventType, table.externalEventId)
+  })
+);
 
 export type FreshnessBucket = (typeof freshnessBucket.enumValues)[number];
 export type RelationshipStage = (typeof relationshipStage.enumValues)[number];

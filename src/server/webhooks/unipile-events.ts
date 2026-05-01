@@ -3,6 +3,7 @@ import type { RelationshipRecord } from "@/server/db/repositories/relationships"
 import type { LinkedInChatRecord } from "@/server/db/repositories/chats";
 import { recomputeRelationshipState, type RelationshipMessage } from "@/server/relationships/recompute";
 import { buildReplyNotification, type ReplyNotification } from "@/server/notifications/reply-notifications";
+import { extractUnipileAccountMetadata } from "@/server/unipile/account-metadata";
 import { normalizeUnipileMessage, type RawUnipileMessage } from "@/server/unipile/normalizers/message";
 
 export type StoredWebhookEvent = {
@@ -16,6 +17,11 @@ export type StoredWebhookEvent = {
 export type MessagingWebhookProcessingStore = {
   upsertWebhookEvent(input: StoredWebhookEvent): Promise<{ id: string }>;
   findLinkedInAccountByUnipileId(unipileAccountId: string): Promise<{ id: string; userId: string; accountUserProviderId?: string | null } | null>;
+  updateLinkedInAccountMetadata?(input: {
+    unipileAccountId: string;
+    accountUserProviderId?: string | null;
+    linkedinProduct?: "classic" | "sales_navigator" | "recruiter" | null;
+  }): Promise<void>;
   findChatByUnipileId(unipileChatId: string): Promise<LinkedInChatRecord | null>;
   upsertMessage(input: {
     userId: string;
@@ -51,10 +57,20 @@ export function buildStoredWebhookEvent(
   eventType: string,
   payload: Record<string, unknown>
 ): StoredWebhookEvent {
+  const eventPayload = webhookEventPayload(payload);
+
   return {
     eventType,
-    unipileAccountId: stringValue(payload, "account_id") ?? stringValue(payload, "accountId"),
-    externalEventId: stringValue(payload, "id") ?? stringValue(payload, "event_id"),
+    unipileAccountId:
+      stringValue(payload, "account_id") ??
+      stringValue(payload, "accountId") ??
+      stringValue(eventPayload, "account_id") ??
+      stringValue(eventPayload, "accountId"),
+    externalEventId:
+      stringValue(payload, "id") ??
+      stringValue(payload, "event_id") ??
+      stringValue(eventPayload, "id") ??
+      stringValue(eventPayload, "event_id"),
     payload,
     processingStatus: "pending"
   };
@@ -69,16 +85,29 @@ export async function processUnipileMessagingWebhook(input: {
   const webhookEvent = input.webhookEventId
     ? { id: input.webhookEventId }
     : await input.store.upsertWebhookEvent(buildStoredWebhookEvent("messaging", input.payload));
-  const unipileAccountId = stringValue(input.payload, "account_id") ?? stringValue(input.payload, "accountId");
+  const eventPayload = webhookEventPayload(input.payload);
+  const unipileAccountId =
+    stringValue(input.payload, "account_id") ??
+    stringValue(input.payload, "accountId") ??
+    stringValue(eventPayload, "account_id") ??
+    stringValue(eventPayload, "accountId");
   if (!unipileAccountId) throw new Error("Messaging webhook missing account_id");
 
   const account = await input.store.findLinkedInAccountByUnipileId(unipileAccountId);
   if (!account) throw new Error(`LinkedIn account not found for Unipile account ${unipileAccountId}`);
 
   const rawMessage = extractMessage(input.payload);
-  const accountUserProviderId = account.accountUserProviderId ?? stringValue(objectValue(input.payload, "account_info") ?? {}, "user_id");
+  const metadata = extractUnipileAccountMetadata(input.payload);
+  await input.store.updateLinkedInAccountMetadata?.({
+    unipileAccountId,
+    ...metadata
+  });
+  const accountUserProviderId = account.accountUserProviderId ?? metadata.accountUserProviderId;
   const message = normalizeUnipileMessage(rawMessage, accountUserProviderId);
-  const unipileChatId = stringValue(input.payload, "chat_id") ?? stringValue(rawMessage, "chat_id");
+  const unipileChatId =
+    stringValue(input.payload, "chat_id") ??
+    stringValue(eventPayload, "chat_id") ??
+    stringValue(rawMessage, "chat_id");
   if (!unipileChatId) throw new Error("Messaging webhook missing chat_id");
 
   const chat = await input.store.findChatByUnipileId(unipileChatId);
@@ -138,27 +167,93 @@ export async function processUnipileMessagingWebhook(input: {
 }
 
 export function parseNewRelationWebhook(payload: Record<string, unknown>) {
+  const relationPayload = webhookEventPayload(payload);
+
   return {
-    unipileAccountId: requireString(payload, "account_id", "accountId"),
-    userProviderId: stringValue(payload, "user_provider_id"),
-    userPublicIdentifier: stringValue(payload, "user_public_identifier"),
-    userProfileUrl: stringValue(payload, "user_profile_url"),
-    userFullName: stringValue(payload, "user_full_name") ?? "Unknown LinkedIn person"
+    unipileAccountId:
+      stringValue(payload, "account_id") ??
+      stringValue(payload, "accountId") ??
+      requireString(relationPayload, "account_id", "accountId"),
+    userProviderId: stringValue(relationPayload, "user_provider_id") ?? stringValue(relationPayload, "provider_id"),
+    userPublicIdentifier: stringValue(relationPayload, "user_public_identifier") ?? stringValue(relationPayload, "public_identifier"),
+    userProfileUrl: stringValue(relationPayload, "user_profile_url") ?? stringValue(relationPayload, "profile_url"),
+    userFullName:
+      stringValue(relationPayload, "user_full_name") ??
+      stringValue(relationPayload, "full_name") ??
+      "Unknown LinkedIn person"
   };
 }
 
 export function parseAccountStatusWebhook(payload: Record<string, unknown>) {
-  const status = requireString(payload, "status");
+  const statusPayload = webhookEventPayload(payload);
+  const status = requireAccountStatus(payload, statusPayload);
+
   return {
-    unipileAccountId: requireString(payload, "account_id", "accountId"),
+    unipileAccountId:
+      stringValue(payload, "account_id") ??
+      stringValue(payload, "accountId") ??
+      requireString(statusPayload, "account_id", "accountId"),
     status,
-    reconnectRequired: status !== "OK",
-    statusMessage: stringValue(payload, "message") ?? stringValue(payload, "status_message")
+    reconnectRequired: reconnectRequiredForStatus(status),
+    statusMessage: accountStatusMessage(payload, statusPayload, status)
   };
 }
 
 function extractMessage(payload: Record<string, unknown>): RawUnipileMessage {
-  return objectValue(payload, "message") ?? payload;
+  const eventPayload = webhookEventPayload(payload);
+  return objectValue(eventPayload, "message") ?? eventPayload;
+}
+
+function webhookEventPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  return (
+    objectValue(payload, "AccountStatus") ??
+    objectValue(payload, "account_status") ??
+    objectValue(payload, "accountStatus") ??
+    objectValue(payload, "NewRelation") ??
+    objectValue(payload, "new_relation") ??
+    objectValue(payload, "newRelation") ??
+    objectValue(payload, "User") ??
+    objectValue(payload, "user") ??
+    objectValue(payload, "event") ??
+    objectValue(payload, "data") ??
+    payload
+  );
+}
+
+function requireAccountStatus(payload: Record<string, unknown>, statusPayload: Record<string, unknown>) {
+  return (
+    stringValue(statusPayload, "status") ??
+    stringValue(payload, "status") ??
+    stringValue(statusPayload, "message") ??
+    stringValue(payload, "message") ??
+    requireString(statusPayload, "status")
+  );
+}
+
+function accountStatusMessage(
+  payload: Record<string, unknown>,
+  statusPayload: Record<string, unknown>,
+  status: string
+) {
+  const explicitMessage =
+    stringValue(statusPayload, "status_message") ??
+    stringValue(statusPayload, "statusMessage") ??
+    stringValue(statusPayload, "reason") ??
+    stringValue(statusPayload, "error") ??
+    stringValue(payload, "status_message") ??
+    stringValue(payload, "statusMessage") ??
+    stringValue(payload, "reason") ??
+    stringValue(payload, "error");
+  if (explicitMessage) return explicitMessage;
+
+  const topLevelMessage = stringValue(payload, "message");
+  if (topLevelMessage && topLevelMessage !== status) return topLevelMessage;
+  const nestedMessage = stringValue(statusPayload, "message");
+  return nestedMessage && nestedMessage !== status ? nestedMessage : undefined;
+}
+
+function reconnectRequiredForStatus(status: string) {
+  return !new Set(["OK", "SYNC_SUCCESS", "CREATION_SUCCESS", "RECONNECTED"]).has(status);
 }
 
 function requireString(input: Record<string, unknown>, ...keys: string[]): string {

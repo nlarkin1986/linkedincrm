@@ -29,7 +29,7 @@ export function normalizeUnipileMessage(
   }
 
   return {
-    unipileMessageId: requireString(raw, "id", "message_id"),
+    unipileMessageId: requireString(raw, "message_id", "id"),
     senderAttendeeProviderId,
     senderName: stringValue(sender, "name") ?? stringValue(sender, "full_name") ?? stringValue(raw, "sender_name"),
     direction: inferDirection(senderAttendeeProviderId, accountUserProviderId, raw),
@@ -46,6 +46,9 @@ function inferDirection(
 ): MessageDirection {
   const explicitDirection = stringValue(raw, "direction");
   if (explicitDirection === "inbound" || explicitDirection === "outbound") return explicitDirection;
+
+  const isSender = booleanValue(raw, "is_sender") ?? booleanValue(raw, "isSender");
+  if (isSender !== null) return isSender ? "outbound" : "inbound";
 
   if (!senderAttendeeProviderId || !accountUserProviderId) return "unknown";
   return senderAttendeeProviderId === accountUserProviderId ? "outbound" : "inbound";
@@ -69,6 +72,11 @@ function dateValue(input: Record<string, unknown>, key: string): Date | null {
   if (typeof value !== "string" && typeof value !== "number") return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function booleanValue(input: Record<string, unknown>, key: string): boolean | null {
+  const value = input[key];
+  return typeof value === "boolean" ? value : null;
 }
 
 function stringValue(input: Record<string, unknown>, key: string): string | null {

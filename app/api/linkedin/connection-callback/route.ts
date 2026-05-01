@@ -7,7 +7,7 @@ import { createRuntimeHostedAuthCallbackStore, createRuntimeSyncQueue } from "@/
 export async function POST(request: Request) {
   try {
     const secret = readOptionalServerEnv().UNIPILE_WEBHOOK_SECRET;
-    if (secret) verifyUnipileWebhook(request.headers, secret);
+    verifyUnipileWebhook(request.headers, secret);
     const result = await handleHostedAuthCallback({
       payload: await request.json(),
       store: createRuntimeHostedAuthCallbackStore(),

@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { readOptionalServerEnv } from "@/server/config/env";
+import type { InngestQueueEvent } from "@/server/jobs/client";
 import { verifyUnipileWebhook, WebhookAuthError } from "./unipile-auth";
 import { buildStoredWebhookEvent, type StoredWebhookEvent } from "./unipile-events";
 
 export type WebhookEventStore = {
-  insertWebhookEvent(input: StoredWebhookEvent): Promise<{ id: string }>;
+  insertWebhookEvent(input: StoredWebhookEvent): Promise<{ id: string; duplicate?: boolean }>;
 };
 
 export type WebhookEventQueue = {
-  send(input: { name: string; data: Record<string, unknown> }): Promise<unknown>;
+  send(input: InngestQueueEvent): Promise<unknown>;
 };
 
 export async function readVerifiedUnipileWebhookPayload(request: Request): Promise<Record<string, unknown>> {
@@ -43,12 +44,23 @@ export async function acceptUnipileWebhook(input: {
   const storedEvent = buildStoredWebhookEvent(input.eventType, input.payload);
   const event = await input.store.insertWebhookEvent(storedEvent);
 
-  await input.queue.send({
-    name: input.queueEventName,
-    data: {
-      webhookEventId: event.id
-    }
-  });
+  if (!event.duplicate) {
+    await input.queue.send({
+      id: createWebhookProcessingEventId(input.queueEventName, event.id),
+      name: input.queueEventName,
+      data: {
+        webhookEventId: event.id
+      }
+    });
+  }
 
-  return { id: event.id, ...storedEvent };
+  return { id: event.id, duplicate: event.duplicate ?? false, ...storedEvent };
+}
+
+export function createWebhookProcessingEventId(queueEventName: string, webhookEventId: string) {
+  return `${queueEventName.replaceAll("/", ".")}:${idSegment(webhookEventId)}`;
+}
+
+function idSegment(value: string) {
+  return value.trim().replace(/[^a-zA-Z0-9_.-]/g, "_") || "none";
 }

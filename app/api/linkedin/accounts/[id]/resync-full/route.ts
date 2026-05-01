@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
-import { readServerEnv, readSupabasePublicKey } from "@/server/config/env";
+import { readServerEnv } from "@/server/config/env";
 import { AuthenticationError } from "@/server/auth/session";
-import { requireRequestAuthIdentity } from "@/server/auth/request-session";
+import {
+  appUserOwnershipIdentity,
+  requireRequestAppUser,
+  runtimeRequestAppUserConfig
+} from "@/server/auth/request-app-user";
 import { AuthorizationError } from "@/server/auth/permissions";
 import { queueLinkedInFullResync } from "@/server/linkedin/sync-actions";
 import { createRuntimeSyncAccountStore, createRuntimeSyncQueue } from "@/server/linkedin/runtime";
+import { createRuntimeDb } from "@/server/db/runtime";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const env = readServerEnv();
-    const user = await requireRequestAuthIdentity(request, {
-      supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: readSupabasePublicKey(env) ?? ""
-    });
+    const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, createRuntimeDb()));
+    const user = appUserOwnershipIdentity(appUser);
     const { id } = await context.params;
     const job = await queueLinkedInFullResync({
       user,
