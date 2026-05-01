@@ -22,7 +22,7 @@ export class UnipileClient {
 
   constructor(private readonly config: UnipileConfig) {
     this.fetchImpl = config.fetchImpl ?? fetch;
-    this.baseUrl = normalizeBaseUrl(config.dsn);
+    this.baseUrl = normalizeUnipileApiUrl(config.dsn);
   }
 
   async listAccounts<T = unknown>(params: ListAccountsParams = {}): Promise<PaginatedUnipileResponse<T>> {
@@ -565,7 +565,7 @@ function toFormData(input: UnipileFormBody): FormData {
   return form;
 }
 
-function normalizeBaseUrl(dsn: string): string {
+export function normalizeUnipileApiUrl(dsn: string): string {
   return (dsn.startsWith("http://") || dsn.startsWith("https://") ? dsn : `https://${dsn}`).replace(/\/$/, "");
 }
 

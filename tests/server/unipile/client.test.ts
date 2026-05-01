@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { UnipileClient } from "@/server/unipile/client";
+import { normalizeUnipileApiUrl, UnipileClient } from "@/server/unipile/client";
 import { UnipileApiError, isRetryableUnipileError } from "@/server/unipile/errors";
 import { collectUnipilePages } from "@/server/unipile/pagination";
 
@@ -54,6 +54,11 @@ describe("UnipileClient", () => {
 
     const [url] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api17.unipile.com:14746/api/v1/webhooks");
+  });
+
+  it("normalizes Unipile API URLs without double-prefixing full DSNs", () => {
+    expect(normalizeUnipileApiUrl("api17.unipile.com:14746")).toBe("https://api17.unipile.com:14746");
+    expect(normalizeUnipileApiUrl("https://api17.unipile.com:14746/")).toBe("https://api17.unipile.com:14746");
   });
 
   it("builds list chats query parameters", async () => {

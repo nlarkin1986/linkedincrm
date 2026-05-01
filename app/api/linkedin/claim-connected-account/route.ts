@@ -5,7 +5,7 @@ import {
   requireRequestAppUser,
   runtimeRequestAppUserConfig
 } from "@/server/auth/request-app-user";
-import { readServerEnv } from "@/server/config/env";
+import { readServerEnvSubset } from "@/server/config/env";
 import { createRuntimeDb } from "@/server/db/runtime";
 import { claimConnectedLinkedInAccount } from "@/server/linkedin/claim-connected-account";
 import { createRuntimeClaimConnectedAccountStore, createRuntimeSyncQueue } from "@/server/linkedin/runtime";
@@ -14,8 +14,15 @@ import { UnipileClient } from "@/server/unipile/client";
 
 export async function POST(request: Request) {
   try {
-    const env = readServerEnv();
-    const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, createRuntimeDb()));
+    const env = readServerEnvSubset([
+      "DATABASE_URL",
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "UNIPILE_DSN",
+      "UNIPILE_API_KEY",
+      "UNIPILE_WEBHOOK_SECRET"
+    ] as const, { requireSupabasePublicKey: true });
+    const db = createRuntimeDb(env.DATABASE_URL);
+    const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, db));
     const user = appUserOwnershipIdentity(appUser);
     const body = await request.json().catch(() => ({}));
     if (typeof body.accountId !== "string" || typeof body.claimToken !== "string") {

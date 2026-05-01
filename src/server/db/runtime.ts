@@ -1,7 +1,6 @@
-import { readServerEnv } from "@/server/config/env";
+import { readServerEnvSubset } from "@/server/config/env";
 import { createDb } from "./client";
 
-export function createRuntimeDb() {
-  const env = readServerEnv();
-  return createDb(env.DATABASE_URL);
+export function createRuntimeDb(databaseUrl = readServerEnvSubset(["DATABASE_URL"] as const).DATABASE_URL) {
+  return createDb(databaseUrl);
 }

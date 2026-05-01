@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prepareArtifactImport } from "@/server/import/artifact-import";
 import { persistArtifactImport } from "@/server/import/artifact-persistence";
 import { createRuntimeArtifactImportStore } from "@/server/import/runtime";
-import { readServerEnv } from "@/server/config/env";
+import { readServerEnvSubset } from "@/server/config/env";
 import { AuthenticationError } from "@/server/auth/session";
 import { AuthorizationError } from "@/server/auth/permissions";
 import {
@@ -14,8 +14,9 @@ import { createRuntimeDb } from "@/server/db/runtime";
 
 export async function POST(request: Request) {
   try {
-    const env = readServerEnv();
-    const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, createRuntimeDb()));
+    const env = readServerEnvSubset(["DATABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"] as const, { requireSupabasePublicKey: true });
+    const db = createRuntimeDb(env.DATABASE_URL);
+    const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, db));
     const user = appUserOwnershipIdentity(appUser);
     const body = await request.json();
     const rows = Array.isArray(body?.rows) ? body.rows : null;

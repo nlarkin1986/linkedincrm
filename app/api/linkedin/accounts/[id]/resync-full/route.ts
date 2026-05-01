@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readServerEnv } from "@/server/config/env";
+import { readServerEnvSubset } from "@/server/config/env";
 import { AuthenticationError } from "@/server/auth/session";
 import {
   appUserOwnershipIdentity,
@@ -13,8 +13,9 @@ import { createRuntimeDb } from "@/server/db/runtime";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const env = readServerEnv();
-    const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, createRuntimeDb()));
+    const env = readServerEnvSubset(["DATABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"] as const, { requireSupabasePublicKey: true });
+    const db = createRuntimeDb(env.DATABASE_URL);
+    const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, db));
     const user = appUserOwnershipIdentity(appUser);
     const { id } = await context.params;
     const job = await queueLinkedInFullResync({

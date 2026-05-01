@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { GET } from "../../app/api/me/route";
 import { buildCurrentUserStatus, initialsForUser } from "@/server/auth/current-user-status";
 
 describe("current user status", () => {
+  it("returns 401 without bearer auth before reading integration environment", async () => {
+    const response = await GET(new Request("https://app.example.com/api/me"));
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body).toEqual({ error: "Authentication required" });
+  });
+
   it("renders connected LinkedIn account status for the signed-in app user", () => {
     const status = buildCurrentUserStatus({
       appUser: {

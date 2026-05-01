@@ -24,7 +24,11 @@ export async function requireRequestAppUser(
   throw new Error("App user persistence is not configured");
 }
 
-export function runtimeRequestAppUserConfig(env: ServerEnv, db: Database): RequestAppUserConfig {
+export function runtimeRequestAppUserConfig(
+  env: Pick<ServerEnv, "NEXT_PUBLIC_SUPABASE_URL"> &
+    Partial<Pick<ServerEnv, "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" | "NEXT_PUBLIC_SUPABASE_ANON_KEY">>,
+  db: Database
+): RequestAppUserConfig {
   return {
     supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: readSupabasePublicKey(env) ?? "",

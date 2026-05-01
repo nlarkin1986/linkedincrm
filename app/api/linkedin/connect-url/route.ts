@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readServerEnv } from "@/server/config/env";
+import { readServerEnvSubset } from "@/server/config/env";
 import { AuthenticationError } from "@/server/auth/session";
 import {
   appUserOwnershipIdentity,
@@ -8,7 +8,7 @@ import {
 } from "@/server/auth/request-app-user";
 import { AuthorizationError } from "@/server/auth/permissions";
 import { buildHostedAuthLinkInput, createHostedAuthClaimToken } from "@/server/unipile/connection";
-import { UnipileClient } from "@/server/unipile/client";
+import { normalizeUnipileApiUrl, UnipileClient } from "@/server/unipile/client";
 import { getConfiguredAppBaseUrl } from "@/server/http/app-origin";
 import { createRuntimeDb } from "@/server/db/runtime";
 import { findLinkedInAccountById } from "@/server/db/repositories/linkedin-accounts";
@@ -16,8 +16,15 @@ import { resolveReconnectUnipileAccountId } from "@/server/linkedin/connect-url"
 
 export async function POST(request: Request) {
   try {
-    const env = readServerEnv();
-    const db = createRuntimeDb();
+    const env = readServerEnvSubset([
+      "DATABASE_URL",
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "APP_BASE_URL",
+      "UNIPILE_DSN",
+      "UNIPILE_API_KEY",
+      "UNIPILE_WEBHOOK_SECRET"
+    ] as const, { requireSupabasePublicKey: true });
+    const db = createRuntimeDb(env.DATABASE_URL);
     const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, db));
     const user = appUserOwnershipIdentity(appUser);
     const body = await request.json().catch(() => ({}));
@@ -45,7 +52,7 @@ export async function POST(request: Request) {
     });
     const link = await client.createHostedAuthLink({
       ...hostedAuthInput,
-      apiUrl: `https://${env.UNIPILE_DSN}`
+      apiUrl: normalizeUnipileApiUrl(env.UNIPILE_DSN)
     });
 
     return NextResponse.json({ url: link.url });

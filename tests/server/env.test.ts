@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readOptionalServerEnv, readServerEnv, readSupabasePublicKey } from "@/server/config/env";
+import { readOptionalServerEnv, readServerEnv, readServerEnvSubset, readSupabasePublicKey } from "@/server/config/env";
 
 describe("server env", () => {
   it("fails fast with missing variable names", () => {
@@ -49,5 +49,37 @@ describe("server env", () => {
     expect(readOptionalServerEnv({ UNIPILE_API_KEY: "token" })).toEqual({
       UNIPILE_API_KEY: "token"
     });
+  });
+
+  it("can validate only the variables required by a route", () => {
+    const env = readServerEnvSubset(
+      ["DATABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"] as const,
+      { requireSupabasePublicKey: true },
+      {
+        DATABASE_URL: "postgres://local",
+        NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "publishable"
+      }
+    );
+
+    expect(env).toMatchObject({
+      DATABASE_URL: "postgres://local",
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "publishable"
+    });
+  });
+
+  it("does not require unrelated integration secrets for auth-only route env", () => {
+    expect(() =>
+      readServerEnvSubset(
+        ["DATABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"] as const,
+        { requireSupabasePublicKey: true },
+        {
+          DATABASE_URL: "postgres://local",
+          NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon"
+        }
+      )
+    ).not.toThrow();
   });
 });

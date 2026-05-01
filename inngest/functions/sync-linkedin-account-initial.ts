@@ -1,5 +1,5 @@
 import { inngest } from "@/server/jobs/client";
-import { readServerEnv } from "@/server/config/env";
+import { readServerEnvSubset } from "@/server/config/env";
 import { createRuntimeDb } from "@/server/db/runtime";
 import { findLinkedInAccountById } from "@/server/db/repositories/linkedin-accounts";
 import { createRuntimeLinkedInSyncStore } from "@/server/jobs/runtime-sync-store";
@@ -10,8 +10,8 @@ export const syncLinkedInAccountInitialFunction = inngest.createFunction(
   { id: "sync-linkedin-account-initial" },
   { event: "linkedin/account.sync_initial" },
   async ({ event }) => {
-    const env = readServerEnv();
-    const db = createRuntimeDb();
+    const env = readServerEnvSubset(["DATABASE_URL", "UNIPILE_DSN", "UNIPILE_API_KEY"] as const);
+    const db = createRuntimeDb(env.DATABASE_URL);
     const accountId = requireEventString(event.data.linkedinAccountId, "linkedinAccountId");
     const account = await findLinkedInAccountById(db, accountId);
     if (!account) throw new Error("LinkedIn account not found");

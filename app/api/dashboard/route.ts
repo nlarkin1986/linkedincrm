@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { extractBearerToken } from "@/server/auth/request-session";
 import { AuthenticationError } from "@/server/auth/session";
 import { requireRequestAppUser, runtimeRequestAppUserConfig } from "@/server/auth/request-app-user";
-import { readServerEnv } from "@/server/config/env";
+import { readServerEnvSubset } from "@/server/config/env";
 import { createRuntimeDb } from "@/server/db/runtime";
 import { buildDashboardResponse, findDashboardRelationshipsByUserId } from "@/server/dashboard/current-user-dashboard";
 
@@ -12,8 +12,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const env = readServerEnv();
-    const db = createRuntimeDb();
+    const env = readServerEnvSubset(["DATABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"] as const, { requireSupabasePublicKey: true });
+    const db = createRuntimeDb(env.DATABASE_URL);
     const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, db));
     const rows = await findDashboardRelationshipsByUserId(db, appUser.id);
 
