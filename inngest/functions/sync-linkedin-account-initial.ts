@@ -12,7 +12,7 @@ export const syncLinkedInAccountInitialFunction = inngest.createFunction(
   async ({ event }) => {
     const env = readServerEnv();
     const db = createRuntimeDb();
-    const accountId = String(event.data.linkedinAccountId ?? "");
+    const accountId = requireEventString(event.data.linkedinAccountId, "linkedinAccountId");
     const account = await findLinkedInAccountById(db, accountId);
     if (!account) throw new Error("LinkedIn account not found");
 
@@ -25,3 +25,10 @@ export const syncLinkedInAccountInitialFunction = inngest.createFunction(
     return result;
   }
 );
+
+function requireEventString(value: unknown, field: string) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Event data missing ${field}`);
+  }
+  return value.trim();
+}

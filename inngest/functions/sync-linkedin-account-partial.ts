@@ -12,7 +12,7 @@ export const syncLinkedInAccountPartialFunction = inngest.createFunction(
   async ({ event }) => {
     const env = readServerEnv();
     const db = createRuntimeDb();
-    const accountId = String(event.data.linkedinAccountId ?? "");
+    const accountId = requireEventString(event.data.linkedinAccountId, "linkedinAccountId");
     const account = await findLinkedInAccountById(db, accountId);
     if (!account) throw new Error("LinkedIn account not found");
     if (typeof event.data.after !== "string") throw new Error("Partial sync requires after");
@@ -26,3 +26,10 @@ export const syncLinkedInAccountPartialFunction = inngest.createFunction(
     });
   }
 );
+
+function requireEventString(value: unknown, field: string) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Event data missing ${field}`);
+  }
+  return value.trim();
+}

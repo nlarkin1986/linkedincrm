@@ -107,4 +107,76 @@ describe("processUnipileMessagingWebhook", () => {
       messagePreview: "Happy to chat next week."
     });
   });
+
+  it("handles documented top-level message fields and records account metadata", async () => {
+    const metadataUpdates: unknown[] = [];
+    const persistedMessages: unknown[] = [];
+    const store: MessagingWebhookProcessingStore = {
+      async upsertWebhookEvent() {
+        return { id: "webhook_event_1" };
+      },
+      async findLinkedInAccountByUnipileId() {
+        return {
+          id: "linkedin_account_1",
+          userId: "user_1",
+          accountUserProviderId: null
+        };
+      },
+      async updateLinkedInAccountMetadata(input) {
+        metadataUpdates.push(input);
+      },
+      async findChatByUnipileId() {
+        return {
+          id: "chat_row_1",
+          userId: "user_1",
+          linkedinAccountId: "linkedin_account_1",
+          personId: "person_1",
+          unipileChatId: "chat_1",
+          isGroup: false,
+          lastMessageAt: null,
+          lastMessageDirection: null
+        };
+      },
+      async upsertMessage(input) {
+        persistedMessages.push(input);
+        return { personId: input.personId };
+      },
+      async findRelationship() {
+        return null;
+      },
+      async listRelationshipMessages() {
+        return [];
+      },
+      async updateRelationshipState() {}
+    };
+
+    const result = await processUnipileMessagingWebhook({
+      payload: {
+        id: "event_1",
+        account_id: "unipile_account_1",
+        chat_id: "chat_1",
+        account_info: { user_id: "rep_provider" },
+        message_id: "msg_2",
+        message: "Sent from the connected account.",
+        sent_at: "2026-04-24T12:00:00Z",
+        is_sender: true,
+        sender: { attendee_provider_id: "rep_provider", name: "Daniel Torres" }
+      },
+      store
+    });
+
+    expect(result).toMatchObject({
+      direction: "outbound",
+      relationshipUpdated: false
+    });
+    expect(metadataUpdates[0]).toMatchObject({
+      unipileAccountId: "unipile_account_1",
+      accountUserProviderId: "rep_provider"
+    });
+    expect(persistedMessages[0]).toMatchObject({
+      unipileMessageId: "msg_2",
+      direction: "outbound",
+      body: "Sent from the connected account."
+    });
+  });
 });

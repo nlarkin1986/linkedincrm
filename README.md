@@ -32,7 +32,15 @@ Do not expose service-role, Unipile, Inngest signing, or AI keys to client compo
 
 Unipile is configured with `UNIPILE_DSN=api17.unipile.com:14746`; keep the matching access token in `.env.local` or your deployment secret store as `UNIPILE_API_KEY`.
 
+`APP_BASE_URL` must be the canonical app origin users sign in from. Supabase browser sessions are origin-scoped, and Unipile Hosted Auth uses this value for success, failure, and callback URLs. Keep this value aligned with the Supabase Auth redirect allowlist.
+
 Copy `.env.example` to `.env.local` for local development, then fill in the non-Unipile service values.
+
+## Integration Audit
+
+Use `docs/ops/crm-integration-audit.md` to verify the CRM pipeline end to end across Supabase auth, Unipile Hosted Auth, Unipile webhooks, Inngest workers, Postgres persistence, and dashboard readiness.
+
+The audit separates code checks from live configuration checks. Keep secret values in the deployment platform or local environment; record only safe evidence such as public origins, route names, webhook source names, row counts, job IDs, and timestamps.
 
 ## Verification
 

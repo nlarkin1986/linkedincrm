@@ -40,9 +40,15 @@ describe("LinkedIn sync actions", () => {
       queue: { send }
     });
 
-    expect((send.mock.calls as unknown as Array<[{ name: string }]>).map(([event]) => event.name)).toEqual([
-      "linkedin/account.sync_partial",
-      "linkedin/account.sync_initial"
+    expect((send.mock.calls as unknown as Array<[{ id: string; name: string }]>).map(([event]) => event)).toMatchObject([
+      {
+        id: "linkedin.account.sync_partial:unipile_account_1:2026-04-20T00_00_00.000Z:none:none",
+        name: "linkedin/account.sync_partial"
+      },
+      {
+        id: "linkedin.account.sync_initial:unipile_account_1",
+        name: "linkedin/account.sync_initial"
+      }
     ]);
   });
 });

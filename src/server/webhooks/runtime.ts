@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import { inngest } from "@/server/jobs/client";
 import { createRuntimeDb } from "@/server/db/runtime";
 import { unipileWebhookEvents } from "@/server/db/schema";
@@ -10,7 +11,7 @@ export function createRuntimeWebhookEventStore(): WebhookEventStore {
     return {
       async insertWebhookEvent() {
         testWebhookEventId += 1;
-        return { id: `test_webhook_event_${testWebhookEventId}` };
+        return { id: `test_webhook_event_${testWebhookEventId}`, duplicate: false };
       }
     };
   }
@@ -28,10 +29,25 @@ export function createRuntimeWebhookEventStore(): WebhookEventStore {
           payload: input.payload,
           processingStatus: input.processingStatus
         })
+        .onConflictDoNothing({
+          target: [unipileWebhookEvents.eventType, unipileWebhookEvents.externalEventId]
+        })
         .returning({ id: unipileWebhookEvents.id });
 
-      if (!event) throw new Error("Unable to persist webhook event");
-      return event;
+      if (event) return { id: event.id, duplicate: false };
+      if (!input.externalEventId) throw new Error("Unable to persist webhook event");
+
+      const [existingEvent] = await db
+        .select({ id: unipileWebhookEvents.id })
+        .from(unipileWebhookEvents)
+        .where(and(
+          eq(unipileWebhookEvents.eventType, input.eventType),
+          eq(unipileWebhookEvents.externalEventId, input.externalEventId)
+        ))
+        .limit(1);
+
+      if (!existingEvent) throw new Error("Unable to load duplicate webhook event");
+      return { id: existingEvent.id, duplicate: true };
     }
   };
 }

@@ -1,27 +1,47 @@
 import { NextResponse } from "next/server";
-import { readServerEnv, readSupabasePublicKey } from "@/server/config/env";
+import { readServerEnv } from "@/server/config/env";
 import { AuthenticationError } from "@/server/auth/session";
-import { requireRequestAuthIdentity } from "@/server/auth/request-session";
-import { buildHostedAuthLinkInput } from "@/server/unipile/connection";
+import {
+  appUserOwnershipIdentity,
+  requireRequestAppUser,
+  runtimeRequestAppUserConfig
+} from "@/server/auth/request-app-user";
+import { AuthorizationError } from "@/server/auth/permissions";
+import { buildHostedAuthLinkInput, createHostedAuthClaimToken } from "@/server/unipile/connection";
 import { UnipileClient } from "@/server/unipile/client";
 import { getConfiguredAppBaseUrl } from "@/server/http/app-origin";
+import { createRuntimeDb } from "@/server/db/runtime";
+import { findLinkedInAccountById } from "@/server/db/repositories/linkedin-accounts";
+import { resolveReconnectUnipileAccountId } from "@/server/linkedin/connect-url";
 
 export async function POST(request: Request) {
   try {
     const env = readServerEnv();
-    const user = await requireRequestAuthIdentity(request, {
-      supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: readSupabasePublicKey(env) ?? ""
-    });
+    const db = createRuntimeDb();
+    const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, db));
+    const user = appUserOwnershipIdentity(appUser);
     const body = await request.json().catch(() => ({}));
     const appBaseUrl = getConfiguredAppBaseUrl(env.APP_BASE_URL, request.url);
+    const reconnectAccountId = await resolveReconnectUnipileAccountId({
+      user,
+      reconnectAccountId: body.reconnectAccountId,
+      store: {
+        findLinkedInAccountById: (id) => findLinkedInAccountById(db, id)
+      }
+    });
     const expiresOn = new Date(Date.now() + 30 * 60 * 1000);
+    const claimToken = createHostedAuthClaimToken({
+      userId: user.id,
+      expiresOn,
+      secret: env.UNIPILE_WEBHOOK_SECRET
+    });
     const client = new UnipileClient({ dsn: env.UNIPILE_DSN, apiKey: env.UNIPILE_API_KEY });
     const hostedAuthInput = buildHostedAuthLinkInput({
       user,
       appBaseUrl,
       expiresOn,
-      reconnectAccountId: body.reconnectAccountId
+      claimToken,
+      reconnectAccountId
     });
     const link = await client.createHostedAuthLink({
       ...hostedAuthInput,
@@ -32,6 +52,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
 
     return NextResponse.json(

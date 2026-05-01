@@ -2,17 +2,21 @@ import { NextResponse } from "next/server";
 import { prepareArtifactImport } from "@/server/import/artifact-import";
 import { persistArtifactImport } from "@/server/import/artifact-persistence";
 import { createRuntimeArtifactImportStore } from "@/server/import/runtime";
-import { readServerEnv, readSupabasePublicKey } from "@/server/config/env";
+import { readServerEnv } from "@/server/config/env";
 import { AuthenticationError } from "@/server/auth/session";
-import { requireRequestAuthIdentity } from "@/server/auth/request-session";
+import { AuthorizationError } from "@/server/auth/permissions";
+import {
+  appUserOwnershipIdentity,
+  requireRequestAppUser,
+  runtimeRequestAppUserConfig
+} from "@/server/auth/request-app-user";
+import { createRuntimeDb } from "@/server/db/runtime";
 
 export async function POST(request: Request) {
   try {
     const env = readServerEnv();
-    const user = await requireRequestAuthIdentity(request, {
-      supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: readSupabasePublicKey(env) ?? ""
-    });
+    const { appUser } = await requireRequestAppUser(request, runtimeRequestAppUserConfig(env, createRuntimeDb()));
+    const user = appUserOwnershipIdentity(appUser);
     const body = await request.json();
     const rows = Array.isArray(body?.rows) ? body.rows : null;
     const linkedinAccountId = typeof body?.linkedinAccountId === "string" ? body.linkedinAccountId : null;
@@ -36,6 +40,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (error instanceof AuthorizationError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
 
     return NextResponse.json(

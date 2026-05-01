@@ -4,6 +4,7 @@ import { findLinkedInAccountById } from "@/server/db/repositories/linkedin-accou
 import { upsertLinkedInAccountFromHostedAuth } from "@/server/db/repositories/linkedin-accounts";
 import type { SyncAccountStore, SyncQueue } from "./sync-actions";
 import type { HostedAuthCallbackStore } from "./connection-callback";
+import type { ClaimConnectedAccountStore } from "./claim-connected-account";
 
 export function createRuntimeSyncAccountStore(): SyncAccountStore {
   const db = createRuntimeDb();
@@ -20,6 +21,14 @@ export function createRuntimeSyncQueue(): SyncQueue {
 }
 
 export function createRuntimeHostedAuthCallbackStore(): HostedAuthCallbackStore {
+  const db = createRuntimeDb();
+
+  return {
+    upsertLinkedInAccountFromHostedAuth: (input) => upsertLinkedInAccountFromHostedAuth(db, input)
+  };
+}
+
+export function createRuntimeClaimConnectedAccountStore(): ClaimConnectedAccountStore {
   const db = createRuntimeDb();
 
   return {

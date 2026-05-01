@@ -1,4 +1,5 @@
 import type { PreparedArtifactRelationship } from "./artifact-import";
+import { assertOwnsRecord } from "@/server/auth/ownership";
 import type { AuthIdentity } from "@/server/db/repositories/app-users";
 import type { LinkedInAccountRecord } from "@/server/db/repositories/linkedin-accounts";
 
@@ -17,10 +18,11 @@ export async function persistArtifactImport(input: {
   rows: PreparedArtifactRelationship[];
   store: ArtifactImportStore;
 }) {
-  const account = await input.store.findLinkedInAccountById(input.linkedinAccountId);
-  if (!account || account.userId !== input.user.id) {
-    throw new Error("LinkedIn account not found");
-  }
+  const account = assertOwnsRecord(
+    input.user.id,
+    await input.store.findLinkedInAccountById(input.linkedinAccountId),
+    "LinkedIn account"
+  );
 
   for (const row of input.rows) {
     await input.store.upsertArtifactRelationship({

@@ -6,6 +6,13 @@ export const processUnipileAccountStatusWebhookFunction = inngest.createFunction
   { id: "process-unipile-account-status-webhook" },
   { event: "unipile/webhook.account_status" },
   async ({ event }) => {
-    return processStoredAccountStatusWebhook(createRuntimeDb(), String(event.data.webhookEventId ?? ""));
+    return processStoredAccountStatusWebhook(createRuntimeDb(), requireEventString(event.data.webhookEventId, "webhookEventId"));
   }
 );
+
+function requireEventString(value: unknown, field: string) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Event data missing ${field}`);
+  }
+  return value.trim();
+}

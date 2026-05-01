@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { AuthorizationError } from "@/server/auth/permissions";
 import { prepareArtifactImport } from "@/server/import/artifact-import";
 import { persistArtifactImport } from "@/server/import/artifact-persistence";
 import { markRelationshipResponded, type RelationshipRecord } from "@/server/db/repositories/relationships";
@@ -106,5 +107,33 @@ describe("artifact import", () => {
 
     expect(result).toEqual({ importedCount: 1, linkedinAccountId: "linkedin_account_1" });
     expect(persisted).toHaveLength(1);
+  });
+
+  it("rejects imports for another user's LinkedIn account before persistence", async () => {
+    const rows = prepareArtifactImport([{ name: "Jane Buyer", freshnessBucket: "warm" }]);
+    let persisted = false;
+
+    await expect(
+      persistArtifactImport({
+        user: { id: "user_1", email: "one@example.com" },
+        linkedinAccountId: "linkedin_account_2",
+        rows,
+        store: {
+          async findLinkedInAccountById() {
+            return {
+              id: "linkedin_account_2",
+              userId: "user_2",
+              unipileAccountId: "unipile_account_2",
+              status: "OK",
+              reconnectRequired: false
+            };
+          },
+          async upsertArtifactRelationship() {
+            persisted = true;
+          }
+        }
+      })
+    ).rejects.toThrow(AuthorizationError);
+    expect(persisted).toBe(false);
   });
 });

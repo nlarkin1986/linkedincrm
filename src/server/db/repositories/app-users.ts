@@ -34,7 +34,12 @@ export async function upsertAppUserFromIdentity(db: Database, identity: AuthIden
   const user = buildAppUserFromIdentity(identity);
   const [record] = await db
     .insert(appUsers)
-    .values(user)
+    .values({
+      authUserId: user.authUserId,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role
+    })
     .onConflictDoUpdate({
       target: appUsers.authUserId,
       set: {

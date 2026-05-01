@@ -11,6 +11,9 @@ describe("UnipileClient", () => {
     await client.createHostedAuthLink({
       apiUrl: "https://api1.unipile.com:123",
       expiresOn: "2026-04-29T22:00:00.000Z",
+      successRedirectUrl: "https://app.example.com/linkedin/connected",
+      failureRedirectUrl: "https://app.example.com/linkedin/error",
+      notifyUrl: "https://app.example.com/api/linkedin/connection-callback",
       name: "user_1"
     });
 
@@ -24,6 +27,11 @@ describe("UnipileClient", () => {
     const [, requestInit] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     const headers = requestInit.headers as Headers;
     expect(headers.get("X-API-KEY")).toBe("secret");
+    expect(JSON.parse(requestInit.body as string)).toMatchObject({
+      success_redirect_url: "https://app.example.com/linkedin/connected",
+      failure_redirect_url: "https://app.example.com/linkedin/error",
+      notify_url: "https://app.example.com/api/linkedin/connection-callback"
+    });
   });
 
   it("uses the configured Unipile DSN when listing accounts", async () => {
